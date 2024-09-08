@@ -1,6 +1,7 @@
 include .env
 
 SRC=src/main/cmd/main.go
+MIGRATIONS_PATH=migrations
 
 .PHONY: all
 all:
@@ -17,6 +18,9 @@ setup:
 	@go mod download github.com/gorilla/mux
 	@go mod download github.com/lib/pq
 	@echo "Dependencies installed"
+	@go get -u github.com/golang-migrate/migrate/v4
+	@echo "Migration utility installed"
+	
 
 .PHONY: start
 start:
@@ -24,15 +28,15 @@ start:
 
 .PHONY: migrate-up
 migrate-up:
-	@migrate -path migrations -database "$(POSTGRES_CONN)" up
+	@migrate -path ${MIGRATIONS_PATH} -database "$(POSTGRES_CONN)" up
 
 .PHONY: migrate-down
 migrate-down:
-	@migrate -path migrations -database "$(POSTGRES_CONN)" down
+	@migrate -path ${MIGRATIONS_PATH} -database "$(POSTGRES_CONN)" down 1
 
 .PHONY: drop-table
 drop-db:
-	@migrate -path migrations -database "$(POSTGRES_CONN)" drop -f
+	@migrate -path ${MIGRATIONS_PATH} -database "$(POSTGRES_CONN)" drop -f
 
 .PHONY: dbshell
 dbshell:
