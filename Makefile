@@ -33,3 +33,7 @@ migrate-down:
 .PHONY: drop-table
 drop-db:
 	@migrate -path migrations -database "$(POSTGRES_CONN)" drop -f
+
+.PHONY: dbshell
+dbshell:
+	@psql -U "${POSTGRES_USER}" -d "${POSTGRES_DATABASE}"
