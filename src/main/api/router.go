@@ -21,6 +21,12 @@ func RegisterRouter(router *mux.Router) {
 	router.HandleFunc("/organization/{id}", handlers.GetOrganizationByIDHandler).Methods(http.MethodGet)
 	router.HandleFunc("/organization/{id}", handlers.UpdateOrganizationByIDHandler).Methods(http.MethodPut)
 	router.HandleFunc("/organization/{id}", handlers.DeleteOrganizationByIDHandler).Methods(http.MethodDelete)
+
+	router.HandleFunc("/organizations_responsibles", handlers.GetAllOrganizationsResponsiblesHandler).Methods(http.MethodGet)
+	router.HandleFunc("/organization_responsible", handlers.CreateOrganizationResponsibleHandler).Methods(http.MethodPost)
+	router.HandleFunc("/organization_responsible/{id}", handlers.GetOrganizationResponsibleByIDHandler).Methods(http.MethodGet)
+	router.HandleFunc("/organization_responsible/{id}", handlers.UpdateOrganizationResponsibleByIDHandler).Methods(http.MethodPatch)
+	router.HandleFunc("/organization_responsible/{id}", handlers.DeleteOrganizationResponsibleByIDHandler).Methods(http.MethodDelete)
 }
 
 func RegisterAPIRouter(router *mux.Router) *mux.Router {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -16,11 +17,11 @@ func CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		log.Error(err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Invalid input: %s", err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	sqlStatement := `
+	query := `
 		INSERT INTO employee(username, first_name, last_name)
 		VALUES($1, $2, $3)
 		RETURNING id, created_at, updated_at;
@@ -29,16 +30,16 @@ func CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	db, err := database.Connect()
 	if err != nil {
 		log.Error(err.Error())
-		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		http.Error(w, "Database connection error", http.StatusServiceUnavailable)
 		return
 	}
 	defer db.Close()
 
 	var id int
 	var createdAt, updatedAt time.Time
-	if err = db.QueryRow(sqlStatement, user.Username, user.FirstName, user.LastName).Scan(&id, &createdAt, &updatedAt); err != nil {
+	if err = db.QueryRow(query, user.Username, user.FirstName, user.LastName).Scan(&id, &createdAt, &updatedAt); err != nil {
 		log.Error(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
 
@@ -54,22 +55,22 @@ func CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAllUsersHandler(w http.ResponseWriter, r *http.Request) {
-	sqlStatement := `
+	query := `
 		SELECT * FROM employee;
 	`
 
 	db, err := database.Connect()
 	if err != nil {
 		log.Error(err.Error())
-		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		http.Error(w, "Database connection error", http.StatusServiceUnavailable)
 		return
 	}
 	defer db.Close()
 
-	rows, err := db.Query(sqlStatement)
+	rows, err := db.Query(query)
 	if err != nil {
 		log.Error(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -80,7 +81,7 @@ func GetAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 		var user models.User
 		if err := rows.Scan(&user.ID, &user.Username, &user.FirstName, &user.LastName, &user.CreatedAt, &user.UpdatedAt); err != nil {
 			log.Error(err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
 			return
 		}
 		users = append(users, user)
@@ -107,13 +108,13 @@ func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 
 	var user models.User
-	sqlStatement := `
+	query := `
 		SELECT * FROM employee WHERE id=$1
 	`
 
-	if err := db.QueryRow(sqlStatement, userID).Scan(&user.ID, &user.Username, &user.FirstName, &user.LastName, &user.CreatedAt, &user.UpdatedAt); err != nil {
+	if err := db.QueryRow(query, userID).Scan(&user.ID, &user.Username, &user.FirstName, &user.LastName, &user.CreatedAt, &user.UpdatedAt); err != nil {
 		log.Error(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
 
@@ -133,7 +134,7 @@ func UpdateUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	var updatedUser models.User
 	if err := json.NewDecoder(r.Body).Decode(&updatedUser); err != nil {
 		log.Error(err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Invalid input: %s", err.Error()), http.StatusBadRequest)
 		return
 	}
 
@@ -144,13 +145,13 @@ func UpdateUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 
 	updatedUser.UpdatedAt = time.Now()
-	sqlStatement := `
+	query := `
 		UPDATE employee SET username=$1, first_name=$2, last_name=$3, updated_at=$4 WHERE id=$5
 	`
 
-	if _, err := db.Exec(sqlStatement, updatedUser.Username, updatedUser.FirstName, updatedUser.LastName, updatedUser.UpdatedAt, userID); err != nil {
+	if _, err := db.Exec(query, updatedUser.Username, updatedUser.FirstName, updatedUser.LastName, updatedUser.UpdatedAt, userID); err != nil {
 		log.Error(err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "Something went wrong", http.StatusBadRequest)
 	}
 
 	log.Infof("Updated user{%d} info", userID)
@@ -173,13 +174,13 @@ func DeleteUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	sqlStatement := `
+	query := `
 		DELETE FROM employee WHERE id=$1
 	`
 
-	if _, err := db.Exec(sqlStatement, userID); err != nil {
+	if _, err := db.Exec(query, userID); err != nil {
 		log.Error(err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "Something went wrong", http.StatusBadRequest)
 	}
 
 	log.Infof("Deleted user{%d}", userID)
