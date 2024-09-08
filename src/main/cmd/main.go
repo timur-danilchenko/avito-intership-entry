@@ -11,7 +11,8 @@ import (
 )
 
 func main() {
-	router := mux.NewRouter()
+	router := api.RegisterAPIRouter(mux.NewRouter())
+
 	api.RegisterRouter(router)
 
 	log.SetFormatter(&log.TextFormatter{
