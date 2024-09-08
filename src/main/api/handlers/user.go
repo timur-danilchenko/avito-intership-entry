@@ -126,7 +126,7 @@ func UpdateUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid note ID", http.StatusBadRequest)
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
 		return
 	}
 
@@ -154,6 +154,35 @@ func UpdateUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Infof("Updated user{%d} info", userID)
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func DeleteUserByIDHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	userID, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	db, err := database.Connect()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	sqlStatement := `
+		DELETE FROM employee WHERE id=$1
+	`
+
+	if _, err := db.Exec(sqlStatement, userID); err != nil {
+		log.Error(err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
+	log.Infof("Deleted user{%d}", userID)
 
 	w.WriteHeader(http.StatusNoContent)
 }

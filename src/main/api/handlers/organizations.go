@@ -158,3 +158,32 @@ func UpdateOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func DeleteOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	userID, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid organization ID", http.StatusBadRequest)
+		return
+	}
+
+	db, err := database.Connect()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	sqlStatement := `
+		DELETE FROM organization WHERE id=$1
+	`
+
+	if _, err := db.Exec(sqlStatement, userID); err != nil {
+		log.Error(err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
+	log.Infof("Deleted organization{%d}", userID)
+
+	w.WriteHeader(http.StatusNoContent)
+}
