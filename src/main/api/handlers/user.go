@@ -53,7 +53,7 @@ func CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-func GetAllUsers(w http.ResponseWriter, r *http.Request) {
+func GetAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 	sqlStatement := `
 		SELECT * FROM employee;
 	`
@@ -91,7 +91,7 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(users)
 }
 
-func GetUserByID(w http.ResponseWriter, r *http.Request) {
+func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	userID, err := strconv.Atoi(vars["id"])
@@ -121,7 +121,7 @@ func GetUserByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-func UpdateUserByID(w http.ResponseWriter, r *http.Request) {
+func UpdateUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	userID, err := strconv.Atoi(vars["id"])
