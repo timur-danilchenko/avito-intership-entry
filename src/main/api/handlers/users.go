@@ -35,19 +35,13 @@ func CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	var id int
-	var createdAt, updatedAt time.Time
-	if err = db.QueryRow(query, user.Username, user.FirstName, user.LastName).Scan(&id, &createdAt, &updatedAt); err != nil {
+	if err = db.QueryRow(query, user.Username, user.FirstName, user.LastName).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt); err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
 
-	log.Infof("Created new user with ID{%d}", id)
-
-	user.ID = id
-	user.CreatedAt = createdAt
-	user.UpdatedAt = updatedAt
+	log.Infof("Created new user with ID{%s}", user.ID)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -76,7 +70,6 @@ func GetAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	var users []models.User
-
 	for rows.Next() {
 		var user models.User
 		if err := rows.Scan(&user.ID, &user.Username, &user.FirstName, &user.LastName, &user.CreatedAt, &user.UpdatedAt); err != nil {
@@ -97,13 +90,16 @@ func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := strconv.Atoi(vars["id"])
 	if err != nil {
+		log.Error(err.Error())
 		http.Error(w, "Invalid user ID", http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.Connect()
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err.Error())
+		http.Error(w, "Database connection error", http.StatusInternalServerError)
+		return
 	}
 	defer db.Close()
 
@@ -127,6 +123,7 @@ func UpdateUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := strconv.Atoi(vars["id"])
 	if err != nil {
+		log.Error(err.Error())
 		http.Error(w, "Invalid user ID", http.StatusBadRequest)
 		return
 	}
@@ -140,7 +137,9 @@ func UpdateUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	db, err := database.Connect()
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err.Error())
+		http.Error(w, "Database connection error", http.StatusInternalServerError)
+		return
 	}
 	defer db.Close()
 
@@ -154,7 +153,7 @@ func UpdateUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Something went wrong", http.StatusBadRequest)
 	}
 
-	log.Infof("Updated user{%d} info", userID)
+	log.Infof("Updated user{%s} info", userID)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -164,13 +163,15 @@ func DeleteUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := strconv.Atoi(vars["id"])
 	if err != nil {
+		log.Error(err.Error())
 		http.Error(w, "Invalid user ID", http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.Connect()
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err.Error())
+		http.Error(w, "Something went wrong", http.StatusBadRequest)
 	}
 	defer db.Close()
 
@@ -183,7 +184,7 @@ func DeleteUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Something went wrong", http.StatusBadRequest)
 	}
 
-	log.Infof("Deleted user{%d}", userID)
+	log.Infof("Deleted user{%s}", userID)
 
 	w.WriteHeader(http.StatusNoContent)
 }

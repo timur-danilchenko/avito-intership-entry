@@ -35,19 +35,13 @@ func CreateOrganizationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	var id int
-	var createdAt, updatedAt time.Time
-	if err = db.QueryRow(query, organization.Name, organization.Description, organization.Type).Scan(&id, &createdAt, &updatedAt); err != nil {
+	if err = db.QueryRow(query, organization.Name, organization.Description, organization.Type).Scan(&organization.ID, &organization.CreatedAt, &organization.UpdatedAt); err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
 
-	log.Infof("Created new organization with ID{%d}", id)
-
-	organization.ID = id
-	organization.CreatedAt = createdAt
-	organization.UpdatedAt = updatedAt
+	log.Infof("Created new organization with ID{%s}", organization.ID)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -76,7 +70,6 @@ func GetAllOrganizationsHandler(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	var organizations []models.Organization
-
 	for rows.Next() {
 		var organization models.Organization
 		if err := rows.Scan(&organization.ID, &organization.Name, &organization.Description, &organization.Type, &organization.CreatedAt, &organization.UpdatedAt); err != nil {
@@ -95,8 +88,9 @@ func GetAllOrganizationsHandler(w http.ResponseWriter, r *http.Request) {
 func GetOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	orgID, err := strconv.Atoi(vars["id"])
+	organizationID, err := strconv.Atoi(vars["id"])
 	if err != nil {
+		log.Error(err.Error())
 		http.Error(w, "Invalid organization ID", http.StatusBadRequest)
 		return
 	}
@@ -114,7 +108,7 @@ func GetOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 		SELECT * FROM organization WHERE id=$1
 	`
 
-	if err := db.QueryRow(query, orgID).Scan(&organization.ID, &organization.Name, &organization.Description, &organization.Type, &organization.CreatedAt, &organization.UpdatedAt); err != nil {
+	if err := db.QueryRow(query, organizationID).Scan(&organization.ID, &organization.Name, &organization.Description, &organization.Type, &organization.CreatedAt, &organization.UpdatedAt); err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
@@ -127,7 +121,7 @@ func GetOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 func UpdateOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	orgID, err := strconv.Atoi(vars["id"])
+	organizationID, err := strconv.Atoi(vars["id"])
 	if err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Invalid organization ID", http.StatusBadRequest)
@@ -155,13 +149,13 @@ func UpdateOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 		UPDATE organization SET name=$1, description=$2, type=$3, updated_at=$4 WHERE id=$5
 	`
 
-	if _, err := db.Exec(query, updatedOrganization.Name, updatedOrganization.Description, updatedOrganization.Type, updatedOrganization.UpdatedAt, orgID); err != nil {
+	if _, err := db.Exec(query, updatedOrganization.Name, updatedOrganization.Description, updatedOrganization.Type, updatedOrganization.UpdatedAt, organizationID); err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Something went wrong", http.StatusBadRequest)
 		return
 	}
 
-	log.Infof("Updated organization{%d} info", orgID)
+	log.Infof("Updated organization{%d} info", organizationID)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -169,8 +163,9 @@ func UpdateOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 func DeleteOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	orgID, err := strconv.Atoi(vars["id"])
+	organizationID, err := strconv.Atoi(vars["id"])
 	if err != nil {
+		log.Error(err.Error())
 		http.Error(w, "Invalid organization ID", http.StatusBadRequest)
 		return
 	}
@@ -187,20 +182,20 @@ func DeleteOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 		DELETE FROM organization WHERE id=$1
 	`
 
-	if _, err := db.Exec(query, orgID); err != nil {
+	if _, err := db.Exec(query, organizationID); err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Something went wrong", http.StatusBadRequest)
 		return
 	}
 
-	log.Infof("Deleted organization{%d}", orgID)
+	log.Infof("Deleted organization{%d}", organizationID)
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func CreateOrganizationResponsibleHandler(w http.ResponseWriter, r *http.Request) {
-	var orgResp models.OrganizationResponsible
-	err := json.NewDecoder(r.Body).Decode(&orgResp)
+	var organizationResponsible models.OrganizationResponsible
+	err := json.NewDecoder(r.Body).Decode(&organizationResponsible)
 	if err != nil {
 		log.Error(err.Error())
 		http.Error(w, fmt.Sprintf("Invalid input: %s", err.Error()), http.StatusBadRequest)
@@ -216,28 +211,30 @@ func CreateOrganizationResponsibleHandler(w http.ResponseWriter, r *http.Request
 	defer db.Close()
 
 	var exists bool
-	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM employee WHERE id=$1)", orgResp.UserID).Scan(&exists)
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM employee WHERE id=$1)", organizationResponsible.UserID).Scan(&exists)
 	if err != nil || !exists {
+		log.Error(err.Error())
 		http.Error(w, "User not exists", http.StatusNotAcceptable)
 		return
 	}
-	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM organization WHERE id=$1)", orgResp.OrganizationID).Scan(&exists)
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM organization WHERE id=$1)", organizationResponsible.OrganizationID).Scan(&exists)
 	if err != nil || !exists {
+		log.Error(err.Error())
 		http.Error(w, "Organization not exists", http.StatusNotAcceptable)
 		return
 	}
 
 	query := `INSERT INTO organization_responsible (organization_id, user_id) VALUES ($1, $2) RETURNING id`
-	err = db.QueryRow(query, orgResp.OrganizationID, orgResp.UserID).Scan(&orgResp.ID)
+	err = db.QueryRow(query, organizationResponsible.OrganizationID, organizationResponsible.UserID).Scan(&organizationResponsible.ID)
 	if err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Failed to create organization responsible", http.StatusInternalServerError)
 		return
 	}
-	log.Infof("Created new organization responsible with ID{%d}", orgResp.ID)
+	log.Infof("Created new organization responsible with ID{%d}", organizationResponsible.ID)
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(orgResp)
+	json.NewEncoder(w).Encode(organizationResponsible)
 }
 
 func GetAllOrganizationsResponsiblesHandler(w http.ResponseWriter, r *http.Request) {
@@ -261,28 +258,28 @@ func GetAllOrganizationsResponsiblesHandler(w http.ResponseWriter, r *http.Reque
 	}
 	defer rows.Close()
 
-	var orgResps []models.OrganizationResponsible
-
+	var organizationResponsibles []models.OrganizationResponsible
 	for rows.Next() {
-		var orgResp models.OrganizationResponsible
-		if err := rows.Scan(&orgResp.ID, &orgResp.OrganizationID, &orgResp.UserID); err != nil {
+		var organizationResponsible models.OrganizationResponsible
+		if err := rows.Scan(&organizationResponsible.ID, &organizationResponsible.OrganizationID, &organizationResponsible.UserID); err != nil {
 			log.Error(err.Error())
 			http.Error(w, "Something went wrong", http.StatusInternalServerError)
 			return
 		}
-		orgResps = append(orgResps, orgResp)
+		organizationResponsibles = append(organizationResponsibles, organizationResponsible)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(orgResps)
+	json.NewEncoder(w).Encode(organizationResponsibles)
 }
 
 func GetOrganizationResponsibleByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	orgRespID, err := strconv.Atoi(vars["id"])
+	organizationResponsibleID, err := strconv.Atoi(vars["id"])
 	if err != nil {
+		log.Error(err.Error())
 		http.Error(w, "Invalid organization responsible ID", http.StatusBadRequest)
 		return
 	}
@@ -295,33 +292,33 @@ func GetOrganizationResponsibleByIDHandler(w http.ResponseWriter, r *http.Reques
 	}
 	defer db.Close()
 
-	var orgResp models.OrganizationResponsible
+	var organizationResponsible models.OrganizationResponsible
 	query := `
 		SELECT * FROM organization_responsible WHERE id=$1
 	`
 
-	if err := db.QueryRow(query, orgRespID).Scan(&orgResp.ID, &orgResp.OrganizationID, &orgResp.UserID); err != nil {
+	if err := db.QueryRow(query, organizationResponsibleID).Scan(&organizationResponsible.ID, &organizationResponsible.OrganizationID, &organizationResponsible.UserID); err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(orgResp)
+	json.NewEncoder(w).Encode(organizationResponsible)
 }
 
 func UpdateOrganizationResponsibleByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	orgRespID, err := strconv.Atoi(vars["id"])
+	organizationResponsibleID, err := strconv.Atoi(vars["id"])
 	if err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Invalid organization responsible ID", http.StatusBadRequest)
 		return
 	}
 
-	var updatedOrgResp models.OrganizationResponsible
-	if err := json.NewDecoder(r.Body).Decode(&updatedOrgResp); err != nil {
+	var updatedOrganizationResponsible models.OrganizationResponsible
+	if err := json.NewDecoder(r.Body).Decode(&updatedOrganizationResponsible); err != nil {
 		log.Error(err.Error())
 		http.Error(w, fmt.Sprintf("Invalid input: %s", err.Error()), http.StatusBadRequest)
 		return
@@ -340,21 +337,22 @@ func UpdateOrganizationResponsibleByIDHandler(w http.ResponseWriter, r *http.Req
 		UPDATE organization_responsible SET organization_id=$1, user_id=$2 WHERE id=$3
 	`
 
-	if _, err := db.Exec(query, updatedOrgResp.OrganizationID, updatedOrgResp.UserID, orgRespID); err != nil {
+	if _, err := db.Exec(query, updatedOrganizationResponsible.OrganizationID, updatedOrganizationResponsible.UserID, organizationResponsibleID); err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Something went wrong", http.StatusBadRequest)
 		return
 	}
 
-	log.Infof("Updated organization responsible{%d} info", orgRespID)
+	log.Infof("Updated organization responsible{%d} info", organizationResponsibleID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func DeleteOrganizationResponsibleByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	orgRespID, err := strconv.Atoi(vars["id"])
+	organizationResponsibleID, err := strconv.Atoi(vars["id"])
 	if err != nil {
+		log.Error(err.Error())
 		http.Error(w, "Invalid organization responsible ID", http.StatusBadRequest)
 		return
 	}
@@ -371,13 +369,13 @@ func DeleteOrganizationResponsibleByIDHandler(w http.ResponseWriter, r *http.Req
 		DELETE FROM organization_responsible WHERE id=$1
 	`
 
-	if _, err := db.Exec(query, orgRespID); err != nil {
+	if _, err := db.Exec(query, organizationResponsibleID); err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Something went wrong", http.StatusBadRequest)
 		return
 	}
 
-	log.Infof("Deleted organization responsible{%d}", orgRespID)
+	log.Infof("Deleted organization responsible{%d}", organizationResponsibleID)
 
 	w.WriteHeader(http.StatusNoContent)
 }
