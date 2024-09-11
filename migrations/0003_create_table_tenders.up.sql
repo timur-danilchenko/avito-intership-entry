@@ -11,12 +11,12 @@
 -- );
 
 CREATE TABLE IF NOT EXISTS tenders (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description VARCHAR(500) NOT NULL,
     service_type tender_service_type,
     status tender_status_type,
-    organization_id UUID REFERENCES organization(id) ON DELETE CASCADE,
+    organization_id INT REFERENCES organization(id) ON DELETE CASCADE,
     version INT NOT NULL DEFAULT 1,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

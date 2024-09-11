@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS bids (
     name VARCHAR(100) NOT NULL,
     description VARCHAR(500) NOT NULL,
     status bid_status_type,
-    tender_id UUID REFERENCES tenders(id) ON DELETE CASCADE,
+    tender_id INT REFERENCES tenders(id) ON DELETE CASCADE,
     author_type bid_author_type,
     author_id VARCHAR(100) NOT NULL,
     version INT NOT NULL DEFAULT 1,
