@@ -212,12 +212,8 @@ func GetUserTendersHandler(w http.ResponseWriter, r *http.Request) {
 func GetTenderStatusHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	tenderID, err := strconv.Atoi(vars["tenderId"])
-	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Invalid tender ID", http.StatusBadRequest)
-		return
-	}
+	tenderID := vars["tenderId"]
+	username := r.URL.Query().Get("username")
 
 	db, err := database.Connect()
 	if err != nil {
@@ -227,8 +223,18 @@ func GetTenderStatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
+	var userID uuid.UUID
+	query := `SELECT id FROM employee WHERE username=$1;`
+	if err := db.QueryRow(query, username).Scan(&userID); err != nil {
+		log.Error(err.Error())
+		http.Error(w, fmt.Sprintf("No user with username: {%s}", username), http.StatusUnauthorized)
+		return
+	}
+
+	// TODO: Only organization related users can view tenders
+
 	var tender models.Tender
-	query := `
+	query = `
 		SELECT status FROM tender WHERE id=$1
 	`
 
