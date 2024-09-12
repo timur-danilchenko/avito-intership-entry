@@ -54,7 +54,7 @@ func CreateTenderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query = `
-		INSERT INTO tenders(name, description, service_type, organization_id)
+		INSERT INTO tender(name, description, service_type, organization_id)
 		VALUES($1, $2, $3, $4)
 		RETURNING id, status, version, created_at;
 	`
@@ -79,7 +79,6 @@ func CreateTenderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAllTendersHandler(w http.ResponseWriter, r *http.Request) {
-	
 	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
 	if err != nil {
 		limit = 5
@@ -91,6 +90,8 @@ func GetAllTendersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	serviceTypes := r.URL.Query()["service_type"]
+
+	// TODO: Add enum validate
 
 	db, err := database.Connect()
 	if err != nil {
