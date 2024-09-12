@@ -252,21 +252,21 @@ func GetTenderStatusHandler(w http.ResponseWriter, r *http.Request) {
 func UpdateTenderStatusHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	tenderID, err := strconv.Atoi(vars["tenderId"])
-	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Invalid tender ID", http.StatusBadRequest)
+	tenderID := vars["tenderId"]
+	if tenderID == "" {
+		log.Error("TenderID is required")
+		http.Error(w, "TenderID is required", http.StatusBadRequest)
 		return
 	}
 
-	status := vars["status"]
+	status := r.URL.Query().Get("status")
 	if status == "" {
 		log.Error("Status is required")
 		http.Error(w, "Status is required", http.StatusBadRequest)
 		return
 	}
 
-	username := vars["username"]
+	username := r.URL.Query().Get("username")
 	if username == "" {
 		log.Error("Username is required")
 		http.Error(w, "Username is required", http.StatusBadRequest)
@@ -281,12 +281,24 @@ func UpdateTenderStatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
+	var userID uuid.UUID
+	query := `SELECT id FROM employee WHERE username=$1;`
+	if err := db.QueryRow(query, username).Scan(&userID); err != nil {
+		log.Error(err.Error())
+		http.Error(w, fmt.Sprintf("No user with username: {%s}", username), http.StatusUnauthorized)
+		return
+	}
+
 	var tender models.Tender
-	query := `
-		SELECT * FROM tender WHERE id=$1
+	query = `
+		SELECT t.* FROM tender t
+		JOIN organization o ON t.organization_id = o.id
+		JOIN organization_responsible orgre ON orgre.organization_id = o.id
+		JOIN employee e ON orgre.user_id = e.id
+		WHERE e.username=$1 AND t.id=$2;
 	`
 
-	if err := db.QueryRow(query, tenderID).Scan(&tender.ID, &tender.Name, &tender.Description, &tender.ServiceType, &tender.Status, &tender.OrganizationID, &tender.Version, &tender.CreatedAt); err != nil {
+	if err := db.QueryRow(query, username, tenderID).Scan(&tender.ID, &tender.Name, &tender.Description, &tender.ServiceType, &tender.Status, &tender.OrganizationID, &tender.Version, &tender.CreatedAt); err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Tender not found", http.StatusNotFound)
 		return
@@ -298,10 +310,7 @@ func UpdateTenderStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query = `
-		UPDATE tender SET status=$1 WHERE id=$2
-	`
-
+	query = `UPDATE tender SET status=$1 WHERE id=$2`
 	if _, err := db.Exec(query, status, tenderID); err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Failed to update tender status", http.StatusInternalServerError)
