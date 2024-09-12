@@ -79,6 +79,7 @@ func CreateTenderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAllTendersHandler(w http.ResponseWriter, r *http.Request) {
+	
 	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
 	if err != nil {
 		limit = 5
