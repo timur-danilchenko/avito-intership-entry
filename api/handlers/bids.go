@@ -41,7 +41,7 @@ func CreateBidHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("Created new bid with ID{%d}", bid.ID)
+	log.Infof("Created new bid with ID{%s}", bid.ID)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

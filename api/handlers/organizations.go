@@ -155,7 +155,7 @@ func UpdateOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("Updated organization{%d} info", organizationID)
+	log.Infof("Updated organization{%s} info", organizationID)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -188,7 +188,7 @@ func DeleteOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("Deleted organization{%d}", organizationID)
+	log.Infof("Deleted organization{%s}", organizationID)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -231,7 +231,7 @@ func CreateOrganizationResponsibleHandler(w http.ResponseWriter, r *http.Request
 		http.Error(w, "Failed to create organization responsible", http.StatusInternalServerError)
 		return
 	}
-	log.Infof("Created new organization responsible with ID{%d}", organizationResponsible.ID)
+	log.Infof("Created new organization responsible with ID{%s}", organizationResponsible.ID)
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(organizationResponsible)
@@ -343,7 +343,7 @@ func UpdateOrganizationResponsibleByIDHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	log.Infof("Updated organization responsible{%d} info", organizationResponsibleID)
+	log.Infof("Updated organization responsible{%s} info", organizationResponsibleID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -375,7 +375,7 @@ func DeleteOrganizationResponsibleByIDHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	log.Infof("Deleted organization responsible{%d}", organizationResponsibleID)
+	log.Infof("Deleted organization responsible{%s}", organizationResponsibleID)
 
 	w.WriteHeader(http.StatusNoContent)
 }

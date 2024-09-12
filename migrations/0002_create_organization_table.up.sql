@@ -5,7 +5,7 @@
 -- );
 
 CREATE TABLE IF NOT EXISTS organization (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
     description TEXT,
     type organization_type,
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS organization (
 );
 
 CREATE TABLE IF NOT EXISTS organization_responsible (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     organization_id INT REFERENCES organization(id) ON DELETE CASCADE,
     user_id INT REFERENCES employee(id) ON DELETE CASCADE
 );

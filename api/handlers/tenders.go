@@ -40,7 +40,7 @@ func CreateTenderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("Created new tender with ID{%d}", tender.ID)
+	log.Infof("Created new tender with ID{%s}", tender.ID)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

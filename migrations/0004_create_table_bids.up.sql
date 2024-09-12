@@ -12,20 +12,20 @@
 -- );
 
 CREATE TABLE IF NOT EXISTS bids (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
     description VARCHAR(500) NOT NULL,
     status bid_status_type,
-    tender_id INT REFERENCES tenders(id) ON DELETE CASCADE,
+    tender_id UUID REFERENCES tenders(id) ON DELETE CASCADE,
     author_type bid_author_type,
-    author_id VARCHAR(100) NOT NULL,
+    author_id UUID REFERENCES employee(id) ON DELETE CASCADE,
     version INT NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS reviews (
-    id SERIAL PRIMARY KEY,
-    bid_id INT REFERENCES bids(id) ON CASCADE DELETE,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    bid_id UUID REFERENCES bids(id) ON CASCADE DELETE,
     description TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
