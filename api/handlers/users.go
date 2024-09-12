@@ -121,12 +121,7 @@ func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 func UpdateUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	userID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
-		return
-	}
+	userID := vars["id"]
 
 	var updatedUser models.User
 	if err := json.NewDecoder(r.Body).Decode(&updatedUser); err != nil {
@@ -161,12 +156,7 @@ func UpdateUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 func DeleteUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	userID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
-		return
-	}
+	userID := vars["id"]
 
 	db, err := database.Connect()
 	if err != nil {

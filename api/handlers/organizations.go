@@ -88,12 +88,7 @@ func GetAllOrganizationsHandler(w http.ResponseWriter, r *http.Request) {
 func GetOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	organizationID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Invalid organization ID", http.StatusBadRequest)
-		return
-	}
+	organizationID := vars["id"]
 
 	db, err := database.Connect()
 	if err != nil {
@@ -121,12 +116,7 @@ func GetOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 func UpdateOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	organizationID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Invalid organization ID", http.StatusBadRequest)
-		return
-	}
+	organizationID := vars["id"]
 
 	var updatedOrganization models.Organization
 	if err := json.NewDecoder(r.Body).Decode(&updatedOrganization); err != nil {
@@ -163,12 +153,7 @@ func UpdateOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 func DeleteOrganizationByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	organizationID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Invalid organization ID", http.StatusBadRequest)
-		return
-	}
+	organizationID := vars["id"]
 
 	db, err := database.Connect()
 	if err != nil {
@@ -310,12 +295,7 @@ func GetOrganizationResponsibleByIDHandler(w http.ResponseWriter, r *http.Reques
 func UpdateOrganizationResponsibleByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	organizationResponsibleID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Invalid organization responsible ID", http.StatusBadRequest)
-		return
-	}
+	organizationResponsibleID := vars["id"]
 
 	var updatedOrganizationResponsible models.OrganizationResponsible
 	if err := json.NewDecoder(r.Body).Decode(&updatedOrganizationResponsible); err != nil {
@@ -350,12 +330,7 @@ func UpdateOrganizationResponsibleByIDHandler(w http.ResponseWriter, r *http.Req
 func DeleteOrganizationResponsibleByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	organizationResponsibleID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Invalid organization responsible ID", http.StatusBadRequest)
-		return
-	}
+	organizationResponsibleID := vars["id"]
 
 	db, err := database.Connect()
 	if err != nil {
