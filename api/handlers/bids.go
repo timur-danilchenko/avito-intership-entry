@@ -29,6 +29,30 @@ func CreateBidHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
+	// var authorID uuid.UUID
+	// query := `SELECT id FROM employee WHERE username=$1;`
+	// if err := db.QueryRow(query, tenderCreate.CreatorUsername).Scan(&authorID); err != nil {
+	// 	log.Error(err.Error())
+	// 	http.Error(w, fmt.Sprintf("No user with username: {%s}", tenderCreate.CreatorUsername), http.StatusNotFound)
+	// 	return
+	// }
+
+	// var exists bool
+	// query = `SELECT EXISTS(SELECT 1 FROM employee WHERE id=$1);`
+	// err = db.QueryRow(query, tenderCreate.OrganizationID).Scan(&exists)
+	// if err != nil || !exists {
+	// 	log.Error(err.Error())
+	// 	http.Error(w, fmt.Sprintf("No organization with id: {%s}", tenderCreate.OrganizationID), http.StatusNotAcceptable)
+	// 	return
+	// }
+
+	// query = `SELECT EXISTS(SELECT 1 FROM organization_responsible WHERE organization_id=$1 and user_id=$2);`
+	// if err := db.QueryRow(query, tenderCreate.OrganizationId).Scan(&organizationID); err != nil {
+	// 	log.Error(err.Error())
+	// 	http.Error(w, fmt.Sprintf("No user with username: {%s}", tenderCreate.CreatorUsername), http.StatusNotFound)
+	// 	return
+	// }
+
 	query := `
 		INSERT INTO bid (name, description, status, tender_id, organization_id, creatorUsername)
 		VALUES ($1, $2, $3, $4, $5, $6)

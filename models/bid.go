@@ -12,6 +12,14 @@ type BidStatusType string
 // BidAuthorType represents the type of the bid author
 type BidAuthorType string
 
+type BidCreate struct {
+	Name        string
+	Description string
+	TenderId    uuid.UUID
+	AuthorType  string
+	AuthorID    uuid.UUID
+}
+
 // Bid represents a bid
 type Bid struct {
 	ID          uuid.UUID     `json:"id"`

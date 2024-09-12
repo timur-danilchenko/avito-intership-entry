@@ -8,23 +8,18 @@ import (
 	"timur-danilchenko/avito-intership-entry/database"
 	"timur-danilchenko/avito-intership-entry/models"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
 func CreateTenderHandler(w http.ResponseWriter, r *http.Request) {
-	var tender models.Tender
-	if err := json.NewDecoder(r.Body).Decode(&tender); err != nil {
+	var tenderCreate models.TenderCreate
+	if err := json.NewDecoder(r.Body).Decode(&tenderCreate); err != nil {
 		log.Error(err.Error())
 		http.Error(w, fmt.Sprintf("Invalid input: %s", err.Error()), http.StatusBadRequest)
 		return
 	}
-
-	query := `
-		INSERT INTO tenders(name, description, service_type, status, organization_id)
-		VALUES($1, $2, $3, $4, $5)
-		RETURNING id, created_at;
-	`
 
 	db, err := database.Connect()
 	if err != nil {
@@ -34,11 +29,47 @@ func CreateTenderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	if err = db.QueryRow(query, tender.Name, tender.Description, tender.ServiceType, tender.Status, tender.OrganizationID).Scan(&tender.ID, &tender.CreatedAt); err != nil {
+	var authorID uuid.UUID
+	query := `SELECT id FROM employee WHERE username=$1;`
+
+	if err := db.QueryRow(query, tenderCreate.CreatorUsername).Scan(&authorID); err != nil {
+		log.Error(err.Error())
+		http.Error(w, fmt.Sprintf("No user with username: {%s}", tenderCreate.CreatorUsername), http.StatusUnauthorized)
+		return
+	}
+
+	var exists bool
+	query = `SELECT EXISTS(SELECT 1 FROM organization WHERE id=$1);`
+	if err = db.QueryRow(query, tenderCreate.OrganizationID).Scan(&exists); err != nil || !exists {
+		log.Error(err.Error())
+		http.Error(w, fmt.Sprintf("No organization with id: {%s}", tenderCreate.OrganizationID), http.StatusUnauthorized)
+		return
+	}
+
+	query = `SELECT EXISTS(SELECT 1 FROM organization_responsible WHERE organization_id=$1 and user_id=$2);`
+	if err := db.QueryRow(query, tenderCreate.OrganizationID, authorID).Scan(&exists); err != nil {
+		log.Error(err.Error())
+		http.Error(w, fmt.Sprintf("Username with id{%s} are not responsible", tenderCreate.CreatorUsername), http.StatusForbidden)
+		return
+	}
+
+	query = `
+		INSERT INTO tenders(name, description, service_type, organization_id)
+		VALUES($1, $2, $3, $4)
+		RETURNING id, status, version, created_at;
+	`
+
+	var tender models.Tender
+	if err = db.QueryRow(query, tenderCreate.Name, tenderCreate.Description, tenderCreate.ServiceType, tenderCreate.OrganizationID).Scan(&tender.ID, &tender.Status, &tender.Version, &tender.CreatedAt); err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
+
+	tender.Name = tenderCreate.Name
+	tender.Description = tenderCreate.Description
+	tender.ServiceType = tenderCreate.ServiceType
+	tender.OrganizationID = tenderCreate.OrganizationID
 
 	log.Infof("Created new tender with ID{%s}", tender.ID)
 

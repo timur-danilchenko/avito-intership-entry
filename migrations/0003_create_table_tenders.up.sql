@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS tenders (
     name VARCHAR(100) NOT NULL,
     description VARCHAR(500) NOT NULL,
     service_type tender_service_type,
-    status tender_status_type,
+    status tender_status_type DEFAULT 'Created',
     organization_id UUID REFERENCES organization(id) ON DELETE CASCADE,
     version INT NOT NULL DEFAULT 1,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
