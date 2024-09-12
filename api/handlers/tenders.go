@@ -168,11 +168,20 @@ func GetUserTendersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
+	var userID uuid.UUID
+	query := `SELECT id FROM employee WHERE username=$1;`
+	if err := db.QueryRow(query, username).Scan(&userID); err != nil {
+		log.Error(err.Error())
+		http.Error(w, fmt.Sprintf("No user with username: {%s}", username), http.StatusUnauthorized)
+		return
+	}
+
 	var tenders []models.Tender
-	query := `
+	query = `
 		SELECT t.* FROM tender t
 		JOIN organization o ON t.organization_id = o.id
-		JOIN employee e ON o.id = e.organization_id
+		JOIN organization_responsible op ON op.organization_id = o.id
+		JOIN employee e ON op.user_id = e.id
 		WHERE e.username = $1
 		ORDER BY t.name LIMIT $2 OFFSET $3
 	`
