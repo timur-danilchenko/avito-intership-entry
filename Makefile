@@ -1,6 +1,6 @@
 include .env
 
-SRC=src/main/cmd/main.go
+SRC=cmd/main.go
 MIGRATIONS_PATH=migrations
 
 .PHONY: all
