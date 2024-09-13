@@ -8,7 +8,7 @@ all:
 	make start & PID=$$; \
 	sleep 1; \
 	make migrate-up; \
-	trap 'make drop-table; kill $$PID' EXIT; \
+	trap 'make drop-db; kill $$PID' EXIT; \
 	wait
 
 .PHONY: setup
