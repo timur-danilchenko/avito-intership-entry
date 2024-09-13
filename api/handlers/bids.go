@@ -8,6 +8,7 @@ import (
 	"timur-danilchenko/avito-intership-entry/database"
 	"timur-danilchenko/avito-intership-entry/models"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
@@ -94,16 +95,30 @@ func GetUserBidsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
+	var userID uuid.UUID
+	query := `SELECT id FROM employee WHERE username=$1`
+	if err := db.QueryRow(query, username).Scan(&userID); err != nil {
+		log.Error(err.Error())
+		http.Error(w, fmt.Sprintf("No user found with username{%s}", username), http.StatusServiceUnavailable)
+		return
+	}
+
+	var organizationID uuid.UUID
+	query = `SELECT organization_id FROM organization_responsible WHERE user_id=$1`
+	if err = db.QueryRow(query, userID).Scan(&organizationID); err != nil {
+		log.Error(err.Error())
+		http.Error(w, fmt.Sprintf("No user found with username{%s}", username), http.StatusServiceUnavailable)
+		return
+	}
+
 	var bids []models.Bid
-	query := `
-		SELECT b.* FROM bid b
-		JOIN organization o ON b.tender_id IN (SELECT id FROM tender WHERE organization_id = o.id)
-		JOIN employee e ON o.id = e.organization_id
-		WHERE e.username = $1
-		ORDER BY b.name LIMIT $2 OFFSET $3
+	query = `
+		SELECT * FROM bid 
+		WHERE author_id=$1
+		ORDER BY name LIMIT $2 OFFSET $3
 	`
 
-	rows, err := db.Query(query, username, limit, offset)
+	rows, err := db.Query(query, userID, limit, offset)
 	if err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Failed to get bids", http.StatusInternalServerError)
