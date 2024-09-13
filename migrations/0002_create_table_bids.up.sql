@@ -1,15 +1,15 @@
--- CREATE TYPE bid_author_type AS ENUM (
---     'Organization',
---     'User'
--- );
+CREATE TYPE bid_author_type AS ENUM (
+    'Organization',
+    'User'
+);
 
--- CREATE TYPE bid_status_type AS ENUM (
---     'Created',
---     'Published',
---     'Canceled',
---     'Approved',
---     'Rejected'
--- );
+CREATE TYPE bid_status_type AS ENUM (
+    'Created',
+    'Published',
+    'Canceled',
+    'Approved',
+    'Rejected'
+);
 
 CREATE TABLE IF NOT EXISTS bid (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
