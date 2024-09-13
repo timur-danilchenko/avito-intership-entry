@@ -10,20 +10,17 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 )
 
 func CreateBidHandler(w http.ResponseWriter, r *http.Request) {
 	var bidCreate models.BidCreate
 	if err := json.NewDecoder(r.Body).Decode(&bidCreate); err != nil {
-		log.Error(err.Error())
 		http.Error(w, fmt.Sprintf("Invalid input: %s", err.Error()), http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.Connect()
 	if err != nil {
-		log.Error(err.Error())
 		http.Error(w, "Database connection error", http.StatusServiceUnavailable)
 		return
 	}
@@ -32,13 +29,11 @@ func CreateBidHandler(w http.ResponseWriter, r *http.Request) {
 	var status string
 	query := `SELECT status FROM tender WHERE id=$1;`
 	if err := db.QueryRow(query, bidCreate.TenderID).Scan(&status); err != nil {
-		log.Error(err.Error())
 		http.Error(w, fmt.Sprintf("No tender with id: {%s}", bidCreate.TenderID), http.StatusNotFound)
 		return
 	}
 
 	if status != "Published" {
-		log.Errorf("Tender{%s} status isn't published", bidCreate.TenderID)
 		http.Error(w, fmt.Sprintf("Tender{%s} status isn't published", bidCreate.TenderID), http.StatusNotFound)
 		return
 	}
@@ -51,7 +46,6 @@ func CreateBidHandler(w http.ResponseWriter, r *http.Request) {
 	`
 
 	if err := db.QueryRow(query, bidCreate.Name, bidCreate.Description, bidCreate.TenderID, bidCreate.AuthorType, bidCreate.AuthorID).Scan(&bid.ID, &bid.Version, &bid.CreatedAt); err != nil {
-		log.Error(err.Error())
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
@@ -61,8 +55,6 @@ func CreateBidHandler(w http.ResponseWriter, r *http.Request) {
 	bid.TenderID = bidCreate.TenderID
 	bid.AuthorType = bidCreate.AuthorType
 	bid.AuthorID = bidCreate.AuthorID
-
-	log.Infof("Created new bid with ID{%s}", bid.ID)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -82,14 +74,12 @@ func GetUserBidsHandler(w http.ResponseWriter, r *http.Request) {
 
 	username := r.URL.Query().Get("username")
 	if username == "" {
-		log.Error("Username is required")
 		http.Error(w, "Username is required", http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.Connect()
 	if err != nil {
-		log.Error(err.Error())
 		http.Error(w, "Database connection error", http.StatusServiceUnavailable)
 		return
 	}
@@ -98,7 +88,6 @@ func GetUserBidsHandler(w http.ResponseWriter, r *http.Request) {
 	var userID uuid.UUID
 	query := `SELECT id FROM employee WHERE username=$1`
 	if err := db.QueryRow(query, username).Scan(&userID); err != nil {
-		log.Error(err.Error())
 		http.Error(w, fmt.Sprintf("No user found with username{%s}", username), http.StatusServiceUnavailable)
 		return
 	}
@@ -106,7 +95,6 @@ func GetUserBidsHandler(w http.ResponseWriter, r *http.Request) {
 	var organizationID uuid.UUID
 	query = `SELECT organization_id FROM organization_responsible WHERE user_id=$1`
 	if err = db.QueryRow(query, userID).Scan(&organizationID); err != nil {
-		log.Error(err.Error())
 		http.Error(w, fmt.Sprintf("No user found with username{%s}", username), http.StatusServiceUnavailable)
 		return
 	}
@@ -120,7 +108,6 @@ func GetUserBidsHandler(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.Query(query, userID, limit, offset)
 	if err != nil {
-		log.Error(err.Error())
 		http.Error(w, "Failed to get bids", http.StatusInternalServerError)
 		return
 	}
@@ -129,7 +116,6 @@ func GetUserBidsHandler(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var bid models.Bid
 		if err := rows.Scan(&bid.ID, &bid.Name, &bid.Description, &bid.Status, &bid.TenderID, &bid.AuthorType, &bid.AuthorID, &bid.Version, &bid.CreatedAt); err != nil {
-			log.Error(err.Error())
 			http.Error(w, "Failed to get bids", http.StatusInternalServerError)
 			return
 		}
@@ -145,47 +131,40 @@ func GetBidsForTenderHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	tenderID := vars["tenderId"]
 
-	username := r.URL.Query().Get("username")
-	if username == "" {
-		log.Error("username не указан")
-		http.Error(w, "username не указан", http.StatusBadRequest)
-		return
+	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
+	if err != nil {
+		limit = 5
 	}
 
-	limit := r.URL.Query().Get("limit")
-	offset := r.URL.Query().Get("offset")
-
-	// Проверка авторизации и прав доступа
-	// ...
+	offset, err := strconv.Atoi(r.URL.Query().Get("offset"))
+	if err != nil {
+		offset = 0
+	}
 
 	db, err := database.Connect()
 	if err != nil {
-		log.Error(err.Error())
 		http.Error(w, "Database connection error", http.StatusServiceUnavailable)
 		return
 	}
 	defer db.Close()
 
 	query := `
-		SELECT * FROM bids
-		WHERE tender_id=$1 AND name=$2
-		ORDER BY id
-		LIMIT $3
+		SELECT * FROM bid
+		WHERE tender_id=$1
+		ORDER BY name LIMIT $2 OFFSET $3
 	`
+	var bids []models.Bid
 
-	rows, err := db.Query(query, tenderID, username, limit, offset)
+	rows, err := db.Query(query, tenderID, limit, offset)
 	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		http.Error(w, "Can't get tenders", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
-	var bids []models.Bid
 	for rows.Next() {
 		var bid models.Bid
-		if err := rows.Scan(&bid.ID, &bid.TenderID, &bid.Name, &bid.CreatedAt); err != nil {
-			log.Error(err.Error())
+		if err := rows.Scan(&bid.ID, &bid.Name, &bid.Description, &bid.Status, &bid.TenderID, &bid.AuthorType, &bid.AuthorID, &bid.Version, &bid.CreatedAt); err != nil {
 			http.Error(w, "Something went wrong", http.StatusInternalServerError)
 			return
 		}
@@ -203,28 +182,49 @@ func GetBidStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	username := r.URL.Query().Get("username")
 	if username == "" {
-		log.Error("username не указан")
 		http.Error(w, "username не указан", http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.Connect()
 	if err != nil {
-		log.Error(err.Error())
 		http.Error(w, "Database connection error", http.StatusServiceUnavailable)
 		return
 	}
 	defer db.Close()
 
-	query := `
-		SELECT status FROM bids
-		WHERE id=$1 AND username=$2
-	`
-
-	var status string
-	if err := db.QueryRow(query, bidID, username).Scan(&status); err != nil {
-		log.Error(err.Error())
+	var bidAuthorType models.BidAuthorType
+	query := `SELECT author_type FROM bid WHERE id=$1`
+	if err := db.QueryRow(query, bidID).Scan(&bidAuthorType); err != nil {
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	var authorID uuid.UUID
+	if bidAuthorType == models.BidAuthorOrganization {
+		query = `
+			SELECT o.id FROM organization o
+			JOIN organization_responsible orgre ON orgre.organization_id=o.id
+			JOIN employee e ON orgre.user_id=e.id
+			WHERE e.username=$1;
+		
+		`
+	} else if bidAuthorType == models.BidAuthorUser {
+		query = `SELECT id FROM employee WHERE username=$1`
+	}
+
+	if err = db.QueryRow(query, username).Scan(&authorID); err != nil {
+		http.Error(w, "Can't find author id", http.StatusNotFound)
+		return
+	}
+
+	query = `
+		SELECT status FROM bid
+		WHERE id=$1 AND author_id=$2
+	`
+	var status string
+	if err := db.QueryRow(query, bidID, authorID).Scan(&status); err != nil {
+		http.Error(w, "AuthorID incorrect or not responsible organization", http.StatusInternalServerError)
 		return
 	}
 
@@ -235,41 +235,71 @@ func GetBidStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 func UpdateBidStatusHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-
 	bidID := vars["bidId"]
-	name := r.URL.Query().Get("username")
 
-	if name == "" {
-		log.Error("username не указан")
+	username := r.URL.Query().Get("username")
+	if username == "" {
 		http.Error(w, "username не указан", http.StatusBadRequest)
 		return
 	}
 
 	status := r.URL.Query().Get("status")
 	if status == "" {
-		log.Error("status не указан")
 		http.Error(w, "status не указан", http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.Connect()
 	if err != nil {
-		log.Error(err.Error())
 		http.Error(w, "Database connection error", http.StatusServiceUnavailable)
 		return
 	}
 	defer db.Close()
 
-	query := `
-		UPDATE bids SET status=$1
-		WHERE id=$2 AND username=$3
-		RETURNING *
+	var bidAuthorType models.BidAuthorType
+	query := `SELECT author_type FROM bid WHERE id=$1`
+	if err := db.QueryRow(query, bidID).Scan(&bidAuthorType); err != nil {
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	var authorID uuid.UUID
+	if bidAuthorType == models.BidAuthorOrganization {
+		query = `
+			SELECT o.id FROM organization o
+			JOIN organization_responsible orgre ON orgre.organization_id=o.id
+			JOIN employee e ON orgre.user_id=e.id
+			WHERE e.username=$1;
+		
+		`
+	} else if bidAuthorType == models.BidAuthorUser {
+		query = `SELECT id FROM employee WHERE username=$1`
+	}
+
+	if err = db.QueryRow(query, username).Scan(&authorID); err != nil {
+		http.Error(w, "Can't find author id", http.StatusNotFound)
+		return
+	}
+
+	query = `
+		SELECT status FROM bid
+		WHERE id=$1 AND author_id=$2
 	`
+	var bidStatus string
+	if err := db.QueryRow(query, bidID, authorID).Scan(&bidStatus); err != nil {
+		http.Error(w, "AuthorID incorrect or not responsible organization", http.StatusInternalServerError)
+		return
+	}
+
+	if status == bidStatus {
+		http.Error(w, "Status is already up to date", http.StatusConflict)
+		return
+	}
 
 	var bid models.Bid
-	if err := db.QueryRow(query, status, bidID, name).Scan(&bid.ID, &bid.TenderID, &bid.Name, &bid.Status, &bid.CreatedAt); err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+	query = `UPDATE bid SET status=$1 WHERE id=$2 RETURNING *`
+	if err := db.QueryRow(query, status, bidID).Scan(&bid.ID, &bid.Name, &bid.Description, &bid.Status, &bid.TenderID, &bid.AuthorType, &bid.AuthorID, &bid.Version, &bid.CreatedAt); err != nil {
+		http.Error(w, "Failed to update tender status", http.StatusInternalServerError)
 		return
 	}
 
@@ -284,37 +314,57 @@ func EditBidHandler(w http.ResponseWriter, r *http.Request) {
 
 	username := r.URL.Query().Get("username")
 	if username == "" {
-		log.Error("Name не указан")
 		http.Error(w, "username не указан", http.StatusBadRequest)
 		return
 	}
 
-	var updatedBid models.Bid
-	if err := json.NewDecoder(r.Body).Decode(&updatedBid); err != nil {
-		log.Error(err.Error())
+	var bidUpdate models.BidUpdate
+	if err := json.NewDecoder(r.Body).Decode(&bidUpdate); err != nil {
 		http.Error(w, "Неправильно сформированы данные", http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.Connect()
 	if err != nil {
-		log.Error(err.Error())
 		http.Error(w, "Database connection error", http.StatusServiceUnavailable)
 		return
 	}
 	defer db.Close()
 
-	query := `
-		UPDATE bids SET
-			name = COALESCE($1, name),
-			description = COALESCE($2, description)
-		WHERE id=$3 AND username=$4
+	var bidAuthorType models.BidAuthorType
+	query := `SELECT author_type FROM bid WHERE id=$1`
+	if err := db.QueryRow(query, bidID).Scan(&bidAuthorType); err != nil {
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	var authorID uuid.UUID
+	if bidAuthorType == models.BidAuthorOrganization {
+		query = `
+			SELECT o.id FROM organization o
+			JOIN organization_responsible orgre ON orgre.organization_id=o.id
+			JOIN employee e ON orgre.user_id=e.id
+			WHERE e.username=$1;
+		
+		`
+	} else if bidAuthorType == models.BidAuthorUser {
+		query = `SELECT id FROM employee WHERE username=$1`
+	}
+
+	if err = db.QueryRow(query, username).Scan(&authorID); err != nil {
+		http.Error(w, "Can't find author id", http.StatusNotFound)
+		return
+	}
+
+	query = `
+		UPDATE bid SET name=$1, description=$2
+		WHERE id=$3 AND author_id=$4
 		RETURNING *
 	`
 
 	var bid models.Bid
-	if err := db.QueryRow(query, updatedBid.Name, updatedBid.Description, bidID, username).Scan(&bid.ID, &bid.TenderID, &bid.Name, &bid.Name, &bid.Description, &bid.CreatedAt); err != nil {
-		log.Error(err.Error())
+	if err := db.QueryRow(query, bidUpdate.Name, bidUpdate.Description, bidID, authorID).Scan(&bid.ID, &bid.Name, &bid.Description, &bid.Status, &bid.TenderID, &bid.AuthorType, &bid.AuthorID, &bid.Version, &bid.CreatedAt); err != nil {
+		fmt.Println(err.Error())
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
@@ -330,36 +380,56 @@ func SubmitBidDecisionHandler(w http.ResponseWriter, r *http.Request) {
 
 	decision := r.URL.Query().Get("decision")
 	if decision == "" {
-		log.Error("decision не указан")
 		http.Error(w, "decision не указан", http.StatusBadRequest)
 		return
 	}
 
 	username := vars["username"]
 	if username == "" {
-		log.Error("username не указан")
 		http.Error(w, "username не указан", http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.Connect()
 	if err != nil {
-		log.Error(err.Error())
 		http.Error(w, "Database connection error", http.StatusServiceUnavailable)
 		return
 	}
 	defer db.Close()
 
-	query := `
-		UPDATE bids SET
-			decision = $1
-		WHERE id=$2 AND username=$3
+	var bidAuthorType models.BidAuthorType
+	query := `SELECT author_type FROM bid WHERE id=$1`
+	if err := db.QueryRow(query, bidID).Scan(&bidAuthorType); err != nil {
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	var authorID uuid.UUID
+	if bidAuthorType == models.BidAuthorOrganization {
+		query = `
+			SELECT o.id FROM organization o
+			JOIN organization_responsible orgre ON orgre.organization_id=o.id
+			JOIN employee e ON orgre.user_id=e.id
+			WHERE e.username=$1;
+		
+		`
+	} else if bidAuthorType == models.BidAuthorUser {
+		query = `SELECT id FROM employee WHERE username=$1`
+	}
+
+	if err = db.QueryRow(query, username).Scan(&authorID); err != nil {
+		http.Error(w, "Can't find author id", http.StatusNotFound)
+		return
+	}
+
+	query = `
+		UPDATE bid SET status='Closed'
+		WHERE id=$1 AND author_id=$2
 		RETURNING *
 	`
 
 	var bid models.Bid
 	if err := db.QueryRow(query, decision, bidID, username).Scan(&bid.ID, &bid.TenderID, &bid.Name, &bid.Name, &bid.Description, &bid.CreatedAt); err != nil {
-		log.Error(err.Error())
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
@@ -370,202 +440,16 @@ func SubmitBidDecisionHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func SubmitBidFeedbackHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	bidID := vars["bidId"]
-
-	bidFeedback := r.URL.Query().Get("bidFeedback")
-	if bidFeedback == "" {
-		log.Error("bidFeedback не указан")
-		http.Error(w, "bidFeedback не указан", http.StatusBadRequest)
-		return
-	}
-
-	username := r.URL.Query().Get("username")
-	if username == "" {
-		log.Error("username не указан")
-		http.Error(w, "username не указан", http.StatusBadRequest)
-		return
-	}
-
-	db, err := database.Connect()
-	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Database connection error", http.StatusServiceUnavailable)
-		return
-	}
-	defer db.Close()
-
-	query := `
-		UPDATE bids SET
-			feedback = $1
-		WHERE id=$2 AND username=$3
-		RETURNING *
-	`
-
-	var bid models.Bid
-	if err := db.QueryRow(query, bidFeedback, bidID, username).Scan(&bid.ID, &bid.TenderID, &bid.AuthorID, &bid.Name, &bid.Description, &bid.Status, &bid.CreatedAt); err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(bid)
+	w.WriteHeader(http.StatusNotImplemented)
 }
 
 func RollbackBidHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	bidID := vars["bidId"]
-	version := vars["version"]
-
-	username := r.URL.Query().Get("username")
-	if username == "" {
-		log.Error("username не указан")
-		http.Error(w, "username не указан", http.StatusBadRequest)
-		return
-	}
-
-	versionInt, err := strconv.Atoi(version)
-	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Неправильный формат версии", http.StatusBadRequest)
-		return
-	}
-
-	db, err := database.Connect()
-	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Database connection error", http.StatusServiceUnavailable)
-		return
-	}
-	defer db.Close()
-
-	// Получить данные предложения по указанной версии
-	query := `
-		SELECT * FROM bids
-		WHERE id=$1 AND version=$2
-	`
-
-	var bid models.Bid
-	if err := db.QueryRow(query, bidID, versionInt).Scan(&bid.ID, &bid.TenderID, &bid.AuthorID, &bid.Name, &bid.Description, &bid.Status, &bid.Version, &bid.CreatedAt); err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Предложение или версия не найдены", http.StatusNotFound)
-		return
-	}
-
-	// Обновить данные предложения
-	query = `
-		UPDATE bids SET
-			name = $1,
-			description = $2,
-			status = $3,
-			version = version + 1
-		WHERE id=$5 AND username=$6
-		RETURNING *
-	`
-
-	if err := db.QueryRow(query, bid.Name, bid.Description, bid.Status, bidID, username).Scan(&bid.ID, &bid.TenderID, &bid.AuthorID, &bid.Name, &bid.Description, &bid.Status, &bid.Version, &bid.CreatedAt); err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(bid)
+	w.WriteHeader(http.StatusNotImplemented)
 }
 
 func GetBidReviewsHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	tenderID := vars["tenderId"]
-
-	authorUsername := r.URL.Query().Get("authorUsername")
-	if authorUsername == "" {
-		log.Error("authorUsername не указан")
-		http.Error(w, "authorUsername не указан", http.StatusBadRequest)
-		return
-	}
-
-	requesterUsername := r.URL.Query().Get("requesterUsername")
-	if requesterUsername == "" {
-		log.Error("requesterUsername не указан")
-		http.Error(w, "requesterUsername не указан", http.StatusBadRequest)
-		return
-	}
-
-	limit := r.URL.Query().Get("limit")
-	offset := r.URL.Query().Get("offset")
-
-	db, err := database.Connect()
-	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Database connection error", http.StatusServiceUnavailable)
-		return
-	}
-	defer db.Close()
-
-	query := `
-		SELECT * FROM bid_reviews
-		WHERE tender_id=$1 AND author_username=$2
-		ORDER BY created_at DESC
-		LIMIT $3 OFFSET $4
-	`
-
-	var reviews []models.Review
-	if limit != "" && offset != "" {
-		limitInt, err := strconv.Atoi(limit)
-		if err != nil {
-			log.Error(err.Error())
-			http.Error(w, "Неправильный формат limit", http.StatusBadRequest)
-			return
-		}
-
-		offsetInt, err := strconv.Atoi(offset)
-		if err != nil {
-			log.Error(err.Error())
-			http.Error(w, "Неправильный формат offset", http.StatusBadRequest)
-			return
-		}
-
-		rows, err := db.Query(query, tenderID, authorUsername, limitInt, offsetInt)
-		if err != nil {
-			log.Error(err.Error())
-			http.Error(w, "Something went wrong", http.StatusInternalServerError)
-			return
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var review models.Review
-			if err := rows.Scan(&review.ID, &review.Description, &review.CreatedAt); err != nil {
-				log.Error(err.Error())
-				http.Error(w, "Something went wrong", http.StatusInternalServerError)
-				return
-			}
-			reviews = append(reviews, review)
-		}
-	} else {
-		rows, err := db.Query(query, tenderID, authorUsername)
-		if err != nil {
-			log.Error(err.Error())
-			http.Error(w, "Something went wrong", http.StatusInternalServerError)
-			return
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var review models.Review
-			if err := rows.Scan(&review.ID, &review.Description, &review.CreatedAt); err != nil {
-				log.Error(err.Error())
-				http.Error(w, "Something went wrong", http.StatusInternalServerError)
-				return
-			}
-			reviews = append(reviews, review)
-		}
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(reviews)
+	w.WriteHeader(http.StatusNotImplemented)
 }

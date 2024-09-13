@@ -6,18 +6,29 @@ import (
 	"github.com/google/uuid"
 )
 
-// BidStatusType represents the status of a bid
-type BidStatusType string
-
 // BidAuthorType represents the type of the bid author
 type BidAuthorType string
 
+const (
+	BidAuthorOrganization BidAuthorType = "Organization"
+	BidAuthorUser         BidAuthorType = "User"
+)
+
+// BidStatusType represents the status of a bid
+type BidStatusType string
+
+const (
+	BidStatusCreated   BidStatusType = "Created"
+	BidStatusPublished BidStatusType = "Published"
+	BidStatusCanceled  BidStatusType = "Canceled"
+)
+
 type BidCreate struct {
-	Name        string
-	Description string
-	TenderID    uuid.UUID
-	AuthorType  BidAuthorType // enum
-	AuthorID    uuid.UUID
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	TenderID    uuid.UUID     `json:"tenderId"`
+	AuthorType  BidAuthorType `json:"authorType"`
+	AuthorID    uuid.UUID     `json:"authorID"`
 }
 
 // Bid represents a bid
@@ -26,15 +37,20 @@ type Bid struct {
 	Name        string        `json:"name"`
 	Description string        `json:"description"`
 	Status      BidStatusType `json:"status"`
-	TenderID    uuid.UUID     `json:"tender_id"`
-	AuthorType  BidAuthorType `json:"author_type"` // enum
-	AuthorID    uuid.UUID     `json:"author_id"`
+	TenderID    uuid.UUID     `json:"tenderId"`
+	AuthorType  BidAuthorType `json:"author_type"`
+	AuthorID    uuid.UUID     `json:"authorId"`
 	Version     int           `json:"version"`
-	CreatedAt   time.Time     `json:"created_at"`
+	CreatedAt   time.Time     `json:"createdAt"`
+}
+
+type BidUpdate struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 type Review struct {
 	ID          uuid.UUID `json:"id"`
 	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"created_at"`
+	CreatedAt   time.Time `json:"createdAt"`
 }
