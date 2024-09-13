@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS bid (
     status bid_status_type,
     tender_id UUID REFERENCES tender(id) ON DELETE CASCADE,
     author_type bid_author_type,
-    author_id UUID REFERENCES employee(id) ON DELETE CASCADE,
+    author_id UUID NOT NULL,
     version INT NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
