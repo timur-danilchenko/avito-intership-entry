@@ -289,16 +289,34 @@ func UpdateTenderStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var organizationID uuid.UUID
+	query = `SELECT organization_id FROM tender WHERE id=$1`
+	if err := db.QueryRow(query, tenderID).Scan(&organizationID); err != nil {
+		log.Error(err.Error())
+		http.Error(w, fmt.Sprintf("Tender with TenderID{%s} not found", tenderID), http.StatusNotFound)
+		return
+	}
+
+	var exists bool
+	query = `SELECT EXISTS(SELECT 1 FROM organization_responsible WHERE user_id=$1 AND organization_id=$2);`
+	if err := db.QueryRow(query, userID, organizationID).Scan(&exists); err != nil {
+		log.Error(err.Error())
+		http.Error(w, fmt.Sprintf("User{%s} not responsible for organization{%s}", username, tenderID), http.StatusUnauthorized)
+		return
+	}
+
+	if !exists {
+		log.Error(fmt.Sprintf("User{%s} not responsible for organization{%s}", username, tenderID))
+		http.Error(w, fmt.Sprintf("User{%s} not responsible for organization{%s}", username, tenderID), http.StatusUnauthorized)
+		return
+	}
+
 	var tender models.Tender
 	query = `
-		SELECT t.* FROM tender t
-		JOIN organization o ON t.organization_id = o.id
-		JOIN organization_responsible orgre ON orgre.organization_id = o.id
-		JOIN employee e ON orgre.user_id = e.id
-		WHERE e.username=$1 AND t.id=$2;
-	`
+		SELECT * FROM tender 
+		WHERE id=$1`
 
-	if err := db.QueryRow(query, username, tenderID).Scan(&tender.ID, &tender.Name, &tender.Description, &tender.ServiceType, &tender.Status, &tender.OrganizationID, &tender.Version, &tender.CreatedAt); err != nil {
+	if err := db.QueryRow(query, tenderID).Scan(&tender.ID, &tender.Name, &tender.Description, &tender.ServiceType, &tender.Status, &tender.OrganizationID, &tender.Version, &tender.CreatedAt); err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Tender not found", http.StatusNotFound)
 		return
@@ -327,10 +345,10 @@ func UpdateTenderStatusHandler(w http.ResponseWriter, r *http.Request) {
 func EditTenderHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	tenderID, err := strconv.Atoi(vars["tenderId"])
-	if err != nil {
-		log.Error(err.Error())
-		http.Error(w, "Invalid tender ID", http.StatusBadRequest)
+	tenderID := vars["tenderId"]
+	if tenderID == "" {
+		log.Error("TenderID is required")
+		http.Error(w, "TenderID is required", http.StatusBadRequest)
 		return
 	}
 
@@ -356,11 +374,41 @@ func EditTenderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	var tender models.Tender
-	query := `
-		SELECT * FROM tender WHERE id=$1
-	`
+	var userID uuid.UUID
+	query := `SELECT id FROM employee WHERE username=$1`
+	if err := db.QueryRow(query, username).Scan(&userID); err != nil {
+		log.Error(err.Error())
+		http.Error(w, fmt.Sprintf("User with username{%s} not found", username), http.StatusNotFound)
+		return
+	}
 
+	var organizationID uuid.UUID
+	query = `SELECT organization_id FROM tender WHERE id=$1`
+	if err := db.QueryRow(query, tenderID).Scan(&organizationID); err != nil {
+		log.Error(err.Error())
+		http.Error(w, fmt.Sprintf("Tender with TenderID{%s} not found", tenderID), http.StatusNotFound)
+		return
+	}
+
+	var exists bool
+	query = `SELECT EXISTS(SELECT 1 FROM organization_responsible WHERE user_id=$1 AND organization_id=$2);`
+	if err := db.QueryRow(query, userID, organizationID).Scan(&exists); err != nil {
+		log.Error(err.Error())
+		http.Error(w, fmt.Sprintf("User{%s} not responsible for organization{%s}", username, tenderID), http.StatusUnauthorized)
+		return
+	}
+
+	if !exists {
+		log.Error(fmt.Sprintf("User{%s} not responsible for organization{%s}", username, tenderID))
+		http.Error(w, fmt.Sprintf("User{%s} not responsible for organization{%s}", username, tenderID), http.StatusUnauthorized)
+		return
+	}
+
+	var tender models.Tender
+	query = `
+		SELECT * FROM tender 
+		WHERE id=$1
+	`
 	if err := db.QueryRow(query, tenderID).Scan(&tender.ID, &tender.Name, &tender.Description, &tender.ServiceType, &tender.Status, &tender.OrganizationID, &tender.Version, &tender.CreatedAt); err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Tender not found", http.StatusNotFound)
@@ -379,9 +427,8 @@ func EditTenderHandler(w http.ResponseWriter, r *http.Request) {
 		tender.ServiceType = tenderUpdate.ServiceType
 	}
 
-	query = `
-		UPDATE tender SET name=$1, description=$2, service_type=$3 WHERE id=$4
-	`
+	log.Info(tenderID)
+	query = `UPDATE tender SET name=$1, description=$2, service_type=$3 WHERE id=$4`
 
 	if _, err := db.Exec(query, tender.Name, tender.Description, tender.ServiceType, tenderID); err != nil {
 		log.Error(err.Error())
