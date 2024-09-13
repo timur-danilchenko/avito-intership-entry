@@ -15,8 +15,8 @@ type BidAuthorType string
 type BidCreate struct {
 	Name        string
 	Description string
-	TenderId    uuid.UUID
-	AuthorType  string
+	TenderID    uuid.UUID
+	AuthorType  BidAuthorType // enum
 	AuthorID    uuid.UUID
 }
 
@@ -27,7 +27,7 @@ type Bid struct {
 	Description string        `json:"description"`
 	Status      BidStatusType `json:"status"`
 	TenderID    uuid.UUID     `json:"tender_id"`
-	AuthorType  BidAuthorType `json:"author_type"`
+	AuthorType  BidAuthorType `json:"author_type"` // enum
 	AuthorID    uuid.UUID     `json:"author_id"`
 	Version     int           `json:"version"`
 	CreatedAt   time.Time     `json:"created_at"`

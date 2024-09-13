@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 	"timur-danilchenko/avito-intership-entry/database"
 	"timur-danilchenko/avito-intership-entry/models"
 
@@ -14,8 +13,8 @@ import (
 )
 
 func CreateBidHandler(w http.ResponseWriter, r *http.Request) {
-	var bid models.Bid
-	if err := json.NewDecoder(r.Body).Decode(&bid); err != nil {
+	var bidCreate models.BidCreate
+	if err := json.NewDecoder(r.Body).Decode(&bidCreate); err != nil {
 		log.Error(err.Error())
 		http.Error(w, fmt.Sprintf("Invalid input: %s", err.Error()), http.StatusBadRequest)
 		return
@@ -29,41 +28,38 @@ func CreateBidHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	// var authorID uuid.UUID
-	// query := `SELECT id FROM employee WHERE username=$1;`
-	// if err := db.QueryRow(query, tenderCreate.CreatorUsername).Scan(&authorID); err != nil {
-	// 	log.Error(err.Error())
-	// 	http.Error(w, fmt.Sprintf("No user with username: {%s}", tenderCreate.CreatorUsername), http.StatusNotFound)
-	// 	return
-	// }
+	var status string
+	query := `SELECT status FROM tender WHERE id=$1;`
+	if err := db.QueryRow(query, bidCreate.TenderID).Scan(&status); err != nil {
+		log.Error(err.Error())
+		http.Error(w, fmt.Sprintf("No tender with id: {%s}", bidCreate.TenderID), http.StatusNotFound)
+		return
+	}
 
-	// var exists bool
-	// query = `SELECT EXISTS(SELECT 1 FROM employee WHERE id=$1);`
-	// err = db.QueryRow(query, tenderCreate.OrganizationID).Scan(&exists)
-	// if err != nil || !exists {
-	// 	log.Error(err.Error())
-	// 	http.Error(w, fmt.Sprintf("No organization with id: {%s}", tenderCreate.OrganizationID), http.StatusNotAcceptable)
-	// 	return
-	// }
+	if status != "Published" {
+		log.Errorf("Tender{%s} status isn't published", bidCreate.TenderID)
+		http.Error(w, fmt.Sprintf("Tender{%s} status isn't published", bidCreate.TenderID), http.StatusNotFound)
+		return
+	}
 
-	// query = `SELECT EXISTS(SELECT 1 FROM organization_responsible WHERE organization_id=$1 and user_id=$2);`
-	// if err := db.QueryRow(query, tenderCreate.OrganizationId).Scan(&organizationID); err != nil {
-	// 	log.Error(err.Error())
-	// 	http.Error(w, fmt.Sprintf("No user with username: {%s}", tenderCreate.CreatorUsername), http.StatusNotFound)
-	// 	return
-	// }
-
-	query := `
-		INSERT INTO bid (name, description, status, tender_id, organization_id, creatorUsername)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, created_at;
+	var bid models.Bid
+	query = `
+		INSERT INTO bid (name, description, tender_id, author_type, author_id)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, version, created_at;
 	`
 
-	if err := db.QueryRow(query, bid.Name, bid.Description, bid.Status, bid.TenderID, bid.AuthorType, bid.AuthorID, bid.Version, time.Now()).Scan(&bid.ID, &bid.CreatedAt); err != nil {
+	if err := db.QueryRow(query, bidCreate.Name, bidCreate.Description, bidCreate.TenderID, bidCreate.AuthorType, bidCreate.AuthorID).Scan(&bid.ID, &bid.Version, &bid.CreatedAt); err != nil {
 		log.Error(err.Error())
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
+
+	bid.Name = bidCreate.Name
+	bid.Description = bidCreate.Description
+	bid.TenderID = bidCreate.TenderID
+	bid.AuthorType = bidCreate.AuthorType
+	bid.AuthorID = bidCreate.AuthorID
 
 	log.Infof("Created new bid with ID{%s}", bid.ID)
 
