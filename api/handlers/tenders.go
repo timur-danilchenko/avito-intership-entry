@@ -293,7 +293,7 @@ func UpdateTenderStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if tender.Status == status {
+	if string(tender.Status) == status {
 		http.Error(w, "Status is already up to date", http.StatusConflict)
 		return
 	}
@@ -304,7 +304,7 @@ func UpdateTenderStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tender.Status = status
+	tender.Status = interface{}(status).(models.TenderStatusType)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
