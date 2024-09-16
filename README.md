@@ -9,16 +9,48 @@
 
 Помогите ребятам из Авито реализовать новое HTTP API!
 
-## Создание и настройка базы данных
-### Установка
-Для установки postgres использовал следующую команду, так как предоставленное окружение Ubuntu.
-```
-sudo apt-get install postgresql-all
-```
+## Настройка базы данных
 ### Миграции
-В рамках разработки были созданы следующие сущности
+Перед тем как мы приступим к проектированию базы данных, у нас уже существуют такие сущности как
 
-**Тендер**
+**Пользователь (User):**
+```
+CREATE TABLE employee (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    username VARCHAR(50) UNIQUE NOT NULL,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+**Организация (Organization):**
+```
+CREATE TYPE organization_type AS ENUM (
+    'IE',
+    'LLC',
+    'JSC'
+);
+
+CREATE TABLE organization (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    type organization_type,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE organization_responsible (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID REFERENCES organization(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES employee(id) ON DELETE CASCADE
+);
+```
+
+Мной были созданы следующие сущности
+
+**Тендер (Tender)**
 ```
 CREATE TYPE tender_status_type AS ENUM (
     'Created',
@@ -44,7 +76,7 @@ CREATE TABLE IF NOT EXISTS tender (
 );
 ```
 
-**Предложения**
+**Предложения (Bids)**
 ```
 CREATE TYPE bid_author_type AS ENUM (
     'Organization',
@@ -93,7 +125,6 @@ docker-compose build
 docker-compose up
 ```
 
-После запуска сервера, сервер будет доступен по адресу ```SERVER_ADDRESS``` описаному в ```.env``` файле
 
 
 ### Локально
