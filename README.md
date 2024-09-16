@@ -113,19 +113,7 @@ CREATE TABLE IF NOT EXISTS review (
 
 ## Использование
 ### Docker
-Для удобства в проекте был описан ```Dockerfile```, а также ```docker-compose.yml``` что позволяет автоматически настраить и запустить сервер и базу данных в Docker-контейнерах
-
-Для этого необходимо выполнить следующие инструкции
-1. Собрать образ Docker-контейнеров
-```
-docker-compose build
-```
-2. Запустить контейнеры
-```
-docker-compose up
-```
-
-
+Не успел добавить… Возникли сложности с заворачиванием инструмента миграции ```golang-migrate```, хотел по переписать на ```goose```, но не хватило времени
 
 ### Локально
 Перед началом необходимо объявить ```.env``` файл в котором надо добавить такие поля как ```SERVER_ADDRESS```. ```POSTGRES_USERNAME```. ```POSTGRES_PASSWORD```. ```POSTGRES_HOST```. ```POSTGRES_PORT```. ```POSTGRES_DATABASE```. ```SSLMODE```. ```POSTGRES_JDBC_URL```. ```POSTGRES_CONN```
